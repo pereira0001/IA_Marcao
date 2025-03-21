@@ -1,121 +1,115 @@
-import random as rd
-import math
-import numpy as np
-from collections import OrderedDict
+import random as rd  # Importa a biblioteca random para gerar números aleatórios
+import math  # Importa a biblioteca math para operações matemáticas
+import numpy as np  # Importa a biblioteca numpy para manipulação de arrays e cálculos
+from collections import OrderedDict  # Importa OrderedDict para manter a ordem de inserção dos itens em um dicionário
 
 class GeneticAlgorithmTSP:
 
     def __init__(self, graph, city_names, generations=20, population_size=10, tournament_size=4, mutationRate=0.1, fitness_selection_rate=0.1):
         """
-        Initialize the GeneticAlgorithmTSP object.
+        Inicializa o objeto GeneticAlgorithmTSP (Algoritmo Genético para TSP).
 
-        Parameters:
-        - graph: The Graph object representing the TSP graph.
-        - city_names: List of city names.
-        - generations: Number of generations to run the algorithm.
-        - population_size: Size of the population of routes.
-        - tournament_size: Number of routes to select for crossover.
-        - mutationRate: Probability of mutation for a genome.
-        - fitness_selection_rate: Percentage of fittest routes to carry over to the next generation.
+        Parâmetros:
+        - graph: O objeto Graph que representa o grafo do TSP (Cidades e Conexões).
+        - city_names: Lista com os nomes das cidades.
+        - generations: Número de gerações a serem executadas no algoritmo.
+        - population_size: Tamanho da população de rotas.
+        - tournament_size: Número de rotas a serem selecionadas para crossover.
+        - mutationRate: Probabilidade de mutação de um cromossomo.
+        - fitness_selection_rate: Percentual de rotas mais aptas para serem mantidas para a próxima geração.
         """
-        self.graph = graph
-        self.population_size = population_size
-        self.generations = generations
-        self.tournament_size = tournament_size
-        self.mutationRate = mutationRate
-        self.fitness_selection_rate = fitness_selection_rate
+        self.graph = graph  # Grafo do TSP
+        self.population_size = population_size  # Tamanho da população
+        self.generations = generations  # Número de gerações
+        self.tournament_size = tournament_size  # Tamanho do torneio para seleção de pais
+        self.mutationRate = mutationRate  # Taxa de mutação
+        self.fitness_selection_rate = fitness_selection_rate  # Taxa de seleção dos indivíduos mais aptos
 
-        # storing genetic diversity values
+        # Lista para armazenar os valores de diversidade genética
         self.genetic_diversity_values = []
 
-        # Mapping between city names and characters
+        # Mapeamento entre as cidades e caracteres
         self.city_map = OrderedDict((char, city) for char, city in zip(range(32, 127), graph.vertices()))
         self.city_mapping = {char: city for char, city in zip(range(32, 127), city_names)}
-        # I don't know why this happens
-        self.city_map[32], self.city_map[33] = self.city_map[33], self.city_map[32]
+        self.city_map[32], self.city_map[33] = self.city_map[33], self.city_map[32]  # Troca as posições das cidades 32 e 33 no mapeamento
 
     def calculate_genetic_diversity(self, population):
         """
-        Calculate genetic diversity within the population.
+        Calcula a diversidade genética dentro da população.
 
-        Parameters:
-        - population: List of routes in the current population.
+        Parâmetros:
+        - population: Lista de rotas na população atual.
 
-        Returns:
-        - Genetic diversity as a float value.
+        Retorna:
+        - A diversidade genética como um valor float.
         """
-        # Convert routes to a matrix for easier distance calculations
+        # Converte as rotas para uma matriz para facilitar o cálculo das distâncias
         routes_matrix = np.array([list(route) for route in population])
 
-        # Calculate pairwise genetic distances between routes
+        # Calcula as distâncias genéticas entre as rotas
         pairwise_distances = np.sum(routes_matrix[:, None, :] != routes_matrix[None, :, :], axis=2)
 
-        # Calculate average genetic distance
+        # Calcula a distância genética média
         total_distance = np.sum(pairwise_distances)
         num_pairs = len(population) * (len(population) - 1)
         average_distance = total_distance / num_pairs
 
-        # Genetic diversity is the inverse of average distance
+        # A diversidade genética é o inverso da distância média
         genetic_diversity = 1 / (1 + average_distance)
 
         return genetic_diversity
 
     def get_genetic_diversity_values(self):
         """
-        Get the genetic diversity values for each generation.
+        Obtém os valores de diversidade genética para cada geração.
 
-        Returns:
-        - List of genetic diversity values.
+        Retorna:
+        - Lista com os valores de diversidade genética.
         """
         return self.genetic_diversity_values
 
     def minCostIndex(self, costs):
         """
-        Return the index of the minimum cost in the costs list.
+        Retorna o índice do menor custo na lista de custos.
+
+        Parâmetros:
+        - costs: Lista de custos das rotas.
+
+        Retorna:
+        - O índice da rota com o menor custo.
         """
         return min(range(len(costs)), key=costs.__getitem__)
 
     def find_fittest_path(self, graph):
         """
-        Find the fittest path through the TSP graph using genetic algorithm.
+        Encontra o caminho mais apto através do grafo TSP usando o algoritmo genético.
 
-        Parameters:
-        - graph: The Graph object representing the TSP graph.
+        Parâmetros:
+        - graph: O objeto Graph que representa o grafo TSP.
 
-        Returns:
-        - fittest_route: List of cities representing the fittest route.
-        - fittest_fitness: The fitness (minimum cost) of the fittest route.
+        Retorna:
+        - fittest_route: A lista de cidades que representa o caminho mais apto.
+        - fittest_fitness: O valor de fitness (custo mínimo) do caminho mais apto.
         """
-        population = self.randomizeCities(graph.vertices())
-        number_of_fits_to_carryover = math.ceil(self.population_size * self.fitness_selection_rate)
+        population = self.randomizeCities(graph.vertices())  # Gera uma população inicial de rotas aleatórias
+        number_of_fits_to_carryover = math.ceil(self.population_size * self.fitness_selection_rate)  # Número de rotas mais aptas a serem mantidas
 
         if number_of_fits_to_carryover > self.population_size:
-            raise ValueError('Fitness rate must be in [0, 1].')
+            raise ValueError('Fitness rate must be in [0, 1].')  # Verifica se a taxa de fitness está entre 0 e 1
 
         print('Optimizing TSP Route for Graph:')
 
         for generation in range(1, self.generations + 1):
-            #print('\nGeneration: {0}'.format(generation))
-            # this print is wrong because it just gets them ordered, now how they are originally ordered in population
-            #print('Population: {0}'.format([self.city_mapping.get(city_map_key, city_map_key) for city_map_key in self.city_map.keys()]))
-            #print('Population: {0}'.format([self.city_mapping.get(char, char) for char in population]))
-
-            new_population = self.create_next_generation(graph, population, number_of_fits_to_carryover)
+            new_population = self.create_next_generation(graph, population, number_of_fits_to_carryover)  # Cria a próxima geração de rotas
             population = new_population
 
-            fittest_index, fittest_route, fittest_fitness = self.get_fittest_route(graph, population)
-            fittest_route = [list(OrderedDict(self.city_mapping).values())[
-                                 list(OrderedDict(self.city_map).values()).index(char)] if char in list(
-                OrderedDict(self.city_map).values()) else char for char in fittest_route]
-            #fittest_route = [self.city_mapping.get(char, char) for char in fittest_route]
+            fittest_index, fittest_route, fittest_fitness = self.get_fittest_route(graph, population)  # Obtém a rota mais apta
+            fittest_route = [list(OrderedDict(self.city_mapping).values())[list(OrderedDict(self.city_map).values()).index(char)] if char in list(OrderedDict(self.city_map).values()) else char for char in fittest_route]
 
-            #print('Fittest Route: {0}\nFitness(minimum cost): {1}'.format(fittest_route, fittest_fitness))
+            genetic_diversity = self.calculate_genetic_diversity(population)  # Calcula a diversidade genética da população
+            self.genetic_diversity_values.append(round(genetic_diversity, 4))  # Adiciona a diversidade genética à lista
 
-            genetic_diversity = self.calculate_genetic_diversity(population)
-            self.genetic_diversity_values.append(round(genetic_diversity, 4))
-            #print('Genetic Diversity: {:.4f}'.format(genetic_diversity))
-
-            if self.converged(population):
+            if self.converged(population):  # Verifica se a população convergiu
                 print("Converged", population)
                 print('\nConverged to a local minima.')
                 break
@@ -124,203 +118,201 @@ class GeneticAlgorithmTSP:
 
     def create_next_generation(self, graph, population, number_of_fits_to_carryover):
         """
-        Create the next generation of routes based on the current population.
+        Cria a próxima geração de rotas com base na população atual.
 
-        Parameters:
-        - graph: The Graph object representing the TSP graph.
-        - population: List of routes in the current population.
-        - number_of_fits_to_carryover: Number of fittest routes to carry over to the next generation.
+        Parâmetros:
+        - graph: O objeto Graph que representa o grafo TSP.
+        - population: Lista de rotas da população atual.
+        - number_of_fits_to_carryover: Número de rotas mais aptas a serem mantidas para a próxima geração.
 
-        Returns:
-        - new_population: List of routes in the new generation.
+        Retorna:
+        - new_population: Lista de rotas da nova geração.
         """
-        new_population = self.add_fittest_routes(graph, population, number_of_fits_to_carryover)
-        new_population += [self.mutate(self.crossover(*self.select_parents(graph, population))) for _ in
-                           range(self.population_size - number_of_fits_to_carryover)]
+        new_population = self.add_fittest_routes(graph, population, number_of_fits_to_carryover)  # Adiciona as rotas mais aptas à nova população
+        new_population += [self.mutate(self.crossover(*self.select_parents(graph, population))) for _ in range(self.population_size - number_of_fits_to_carryover)]  # Aplica mutação nas novas rotas
+
         return new_population
 
     def add_fittest_routes(self, graph, population, number_of_fits_to_carryover):
         """
-        Add the fittest routes to the next generation.
+        Adiciona as rotas mais aptas à próxima geração.
 
-        Parameters:
-        - graph: The Graph object representing the TSP graph.
-        - population: List of routes in the current population.
-        - number_of_fits_to_carryover: Number of fittest routes to carry over to the next generation.
+        Parâmetros:
+        - graph: O objeto Graph que representa o grafo TSP.
+        - population: Lista de rotas da população atual.
+        - number_of_fits_to_carryover: Número de rotas mais aptas a serem mantidas.
 
-        Returns:
-        - sorted_population: Sorted list of routes based on fitness.
+        Retorna:
+        - sorted_population: Lista de rotas ordenadas por fitness (custo).
         """
-        sorted_population = [x for _, x in sorted(zip(self.computeFitness(graph, population), population))]
+        sorted_population = [x for _, x in sorted(zip(self.computeFitness(graph, population), population))]  # Ordena as rotas pela aptidão
         return sorted_population[:number_of_fits_to_carryover]
 
     def get_fittest_route(self, graph, population):
         """
-        Get the fittest route from the population.
+        Obtém a rota mais apta da população.
 
-        Parameters:
-        - graph: The Graph object representing the TSP graph.
-        - population: List of routes in the current population.
+        Parâmetros:
+        - graph: O objeto Graph que representa o grafo TSP.
+        - population: Lista de rotas da população.
 
-        Returns:
-        - fittest_index: Index of the fittest route in the population.
-        - fittest_route: List of cities representing the fittest route.
-        - fittest_fitness: The fitness (minimum cost) of the fittest route.
+        Retorna:
+        - fittest_index: Índice da rota mais apta na população.
+        - fittest_route: A rota mais apta.
+        - fittest_fitness: O valor de fitness (custo) da rota mais apta.
         """
-        fitness = self.computeFitness(graph, population)
-        fittest_index = self.minCostIndex(fitness)
+        fitness = self.computeFitness(graph, population)  # Calcula a aptidão (custo) de cada rota
+        fittest_index = self.minCostIndex(fitness)  # Encontra o índice da rota com o menor custo
         return fittest_index, population[fittest_index], fitness[fittest_index]
 
     def select_parents(self, graph, population):
         """
-        Select two parents for crossover using tournament selection.
+        Seleciona dois pais para crossover usando seleção por torneio.
 
-        Parameters:
-        - graph: The Graph object representing the TSP graph.
-        - population: List of routes in the current population.
+        Parâmetros:
+        - graph: O objeto Graph que representa o grafo TSP.
+        - population: Lista de rotas da população.
 
-        Returns:
-        - parent1: First parent selected for crossover.
-        - parent2: Second parent selected for crossover.
+        Retorna:
+        - parent1: O primeiro pai selecionado.
+        - parent2: O segundo pai selecionado.
         """
         return self.tournamentSelection(graph, population), self.tournamentSelection(graph, population)
 
     def randomizeCities(self, graph_nodes):
         """
-        Randomly generate routes for the initial population.
+        Gera rotas aleatórias para a população inicial.
 
-        Parameters:
-        - graph_nodes: List of nodes in the TSP graph.
+        Parâmetros:
+        - graph_nodes: Lista de nós do grafo TSP (cidades).
 
-        Returns:
-        - List of random routes.
+        Retorna:
+        - Lista de rotas aleatórias.
         """
-        # Nodes without the start city
-        nodes = [node for node in graph_nodes if node != self.graph.start_city]
+        nodes = [node for node in graph_nodes if node != self.graph.start_city]  # Remove a cidade inicial
 
         return [
             self.graph.start_city + ''.join(rd.sample(nodes, len(nodes))) + self.graph.start_city
-            for _ in range(self.population_size)
+            for _ in range(self.population_size)  # Gera rotas aleatórias
         ]
 
     def computeFitness(self, graph, population):
         """
-        Compute the fitness (cost) for each route in the population.
+        Calcula a aptidão (custo) de cada rota na população.
 
-        Parameters:
-        - graph: The Graph object representing the TSP graph.
-        - population: List of routes.
+        Parâmetros:
+        - graph: O objeto Graph que representa o grafo TSP.
+        - population: Lista de rotas.
 
-        Returns:
-        - List of fitness values (costs).
+        Retorna:
+        - Lista de valores de fitness (custos).
         """
         return [graph.getPathCost(path) for path in population]
 
     def tournamentSelection(self, graph, population):
         """
-        Perform tournament selection to choose a parent for crossover.
+        Realiza a seleção por torneio para escolher um pai para crossover.
 
-        Parameters:
-        - graph: The Graph object representing the TSP graph.
-        - population: List of routes in the current population.
+        Parâmetros:
+        - graph: O objeto Graph que representa o grafo TSP.
+        - population: Lista de rotas na população.
 
-        Returns:
-        - Selected parent for crossover.
+        Retorna:
+        - O pai selecionado para o crossover.
         """
-        tournament_contestants = rd.choices(population, k=self.tournament_size)
-        return min(tournament_contestants, key=lambda path: graph.getPathCost(path))
+        tournament_contestants = rd.choices(population, k=self.tournament_size)  # Seleciona candidatos aleatórios para o torneio
+        return min(tournament_contestants, key=lambda path: graph.getPathCost(path))  # Retorna o vencedor (rota de menor custo)
 
     def crossover(self, parent1, parent2):
         """
-        Perform crossover between two parents to generate an offspring.
+        Realiza o crossover entre dois pais para gerar um filho.
 
-        Parameters:
-        - parent1: First parent for crossover.
-        - parent2: Second parent for crossover.
+        Parâmetros:
+        - parent1: Primeiro pai.
+        - parent2: Segundo pai.
 
-        Returns:
-        - Offspring generated through crossover.
+        Retorna:
+        - O filho gerado a partir do crossover.
         """
-        offspring_length = len(parent1) - 2  # excluding first and last city
+        offspring_length = len(parent1) - 2  # Exclui as cidades inicial e final
 
         offspring = ['' for _ in range(offspring_length)]
 
-        index_low, index_high = self.computeTwoPointIndexes(parent1)
+        index_low, index_high = self.computeTwoPointIndexes(parent1)  # Gera os pontos de crossover
 
-        # Copy the genes from parent1 to the offspring
+        # Copia os genes do pai 1 para o filho
         offspring[index_low: index_high + 1] = list(parent1)[index_low: index_high + 1]
 
-        # The remaining genes are copied from parent2
+        # Copia os genes restantes do pai 2 para o filho
         empty_place_indexes = [i for i in range(offspring_length) if offspring[i] == '']
-        for i in parent2[1: -1]:  # exclude the start and end cities
+        for i in parent2[1: -1]:  # Exclui as cidades inicial e final
             if '' not in offspring or not empty_place_indexes:
                 break
             if i not in offspring:
                 offspring[empty_place_indexes.pop(0)] = i
 
-        offspring = [self.graph.start_city] + offspring + [self.graph.start_city]
+        offspring = [self.graph.start_city] + offspring + [self.graph.start_city]  # Reinsere a cidade inicial e final
         return ''.join(offspring)
-
 
     def mutate(self, genome):
         """
-        Mutate a genome with a probability specified by mutationRate.
+        Aplica uma mutação no cromossomo com a probabilidade especificada por mutationRate.
 
-        Parameters:
-        - genome: The genome to be mutated.
+        Parâmetros:
+        - genome: O cromossomo a ser mutado.
 
-        Returns:
-        - Mutated genome.
+        Retorna:
+        - O cromossomo mutado.
         """
         if rd.random() < self.mutationRate:
-            index_low, index_high = self.computeTwoPointIndexes(genome)
-            return self.swap(index_low, index_high, genome)
+            index_low, index_high = self.computeTwoPointIndexes(genome)  # Gera os pontos de mutação
+            return self.swap(index_low, index_high, genome)  # Aplica a troca nos pontos gerados
         else:
-            return genome
+            return genome  # Se não houver mutação, retorna o cromossomo original
 
-    def computeTwoPointIndexes(self,parent):
+    def computeTwoPointIndexes(self, parent):
         """
-        Compute two crossover points for the two-point crossover.
+        Gera dois pontos de crossover para o processo de mutação.
 
-        Parameters:
-        - parent: Parent for which crossover points are computed.
+        Parâmetros:
+        - parent: O cromossomo (rota) de onde serão gerados os pontos.
 
-        Returns:
-        - Tuple containing two crossover points (index_low, index_high).
+        Retorna:
+        - Um tupla com os dois pontos de mutação (index_low, index_high).
         """
-        index_low = rd.randint(1, len(parent) - 3)
-        index_high = rd.randint(index_low+1, len(parent) - 2)
+        index_low = rd.randint(1, len(parent) - 3)  # Gera um índice baixo
+        index_high = rd.randint(index_low+1, len(parent) - 2)  # Gera um índice alto
 
-        # make sure the difference between the two indexes is less than half the length of the parent
+        # Verifica se a diferença entre os índices é menor que metade do comprimento do pai
         if index_high - index_low > math.ceil(len(parent) // 2):
-              return self.computeTwoPointIndexes(parent)
+            return self.computeTwoPointIndexes(parent)
         else:
-              return index_low, index_high
+            return index_low, index_high
 
     def swap(self, index_low, index_high, string):
         """
-        Swap two elements in a string.
+        Troca dois elementos em uma string.
 
-        Parameters:
-        - index_low: Index of the first element to be swapped.
-        - index_high: Index of the second element to be swapped.
-        - string: The string in which elements are swapped.
+        Parâmetros:
+        - index_low: Índice do primeiro elemento a ser trocado.
+        - index_high: Índice do segundo elemento a ser trocado.
+        - string: A string onde os elementos serão trocados.
 
-        Returns:
-        - String with elements swapped.
+        Retorna:
+        - A string com os elementos trocados.
         """
         string = list(string)
-        string[index_low], string[index_high] = string[index_high], string[index_low]
+        string[index_low], string[index_high] = string[index_high], string[index_low]  # Realiza a troca
         return ''.join(string)
 
     def converged(self, population):
         """
-        Check if all genomes in the population are the same.
+        Verifica se todos os cromossomos na população são iguais.
 
-        Parameters:
-        - population: List of genomes.
+        Parâmetros:
+        - population: Lista de cromossomos.
 
-        Returns:
-        - True if all genomes are the same, False otherwise.
+        Retorna:
+        - True se todos os cromossomos forem iguais, False caso contrário.
         """
-        return all(genome == population[0] for genome in population)
+        return all(genome == population[0] for genome in population)  # Verifica se todos os cromossomos são iguais
